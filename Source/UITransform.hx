@@ -72,23 +72,38 @@ class UITransform extends Transformation{
             updateGrabsPosition();
         }
     }
-
+    var n = 0;
     private function updateGrabsPosition(except:Array<Int> = null){
-        var r = getRotationRad();
+        var _r = getRotationRad();
+         
         setRotationRad(0);
         setGrabsPositionWhenRI0();
-
-        for (index => value in grabs) {
+        setRotationRad(_r);
+        var distances:Array<Float> = [];
+        var pvt:Point = getPivot();
+        for (index => grab in grabs) {
             if(index != 4){
-
+                var a = grab.x - pvt.x;
+                var b = grab.y - pvt.y;
+                distances.push(Math.sqrt(a * a + b * b));
             }
-        }   
+            else {
+                distances.push(0);
+            }
+        }
+        
+        for (i => dis in distances) {
+            if(i != 4){
+                var grab = grabs[i];
+                var r:Float = Math.atan2(grab.x - pvt.x,grab.y - pvt.y) + Math.PI / 2;
 
-
-
-        var __x = _target.parent.mouseX - pivotOffset.x;
-        var __y = _target.parent.mouseY - pivotOffset.y;
-        this.setPivot(new Point(__x,__y));
+                grab.x = pvt.x + Math.cos(_r) * dis;
+                grab.y = pvt.y + Math.sin(_r) * dis;
+                grab.rotation = _r * 180 / Math.PI;
+            }
+            
+        }
+        this.setPivot(new Point(_target.parent.mouseX - pivotOffset.x,_target.parent.mouseY - pivotOffset.y));
 
     }
 

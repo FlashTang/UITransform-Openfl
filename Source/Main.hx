@@ -36,17 +36,3 @@ class Main extends Sprite
 	
 
 }
-
-
-class RotatePoint extends Sprite{
-
-    public var size:Float;
-    public function new(fillColor:Int,size:Float,_alpha = 0.5) {
-        super();
-        this.size = size;
-        graphics.beginFill(fillColor,_alpha);
-        graphics.drawCircle(0,0,size);
-        graphics.endFill();
-    }
-    
-}

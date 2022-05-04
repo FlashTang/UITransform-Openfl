@@ -32,7 +32,7 @@ class ApplicationMain
 
 		ManifestResources.init(config);
 
-		app.meta["build"] = "3";
+		app.meta["build"] = "4";
 		app.meta["company"] = "Company Name";
 		app.meta["file"] = "UITransform";
 		app.meta["name"] = "UITransform";

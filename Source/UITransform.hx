@@ -33,8 +33,9 @@ class UITransform extends Transformation{
             target.addEventListener(Event.ADDED_TO_STAGE,ATSHandler);
         }
         this.addEventListener(Transformation.TRANSFORM, _onTransform);
+        
         target.addEventListener(MouseEvent.MOUSE_DOWN,targetMouseDownHandler);
-        //this.setRotation(25);
+
         updateGrabsPosition();
     }
     private var targetOffset:Point;
@@ -75,12 +76,13 @@ class UITransform extends Transformation{
     var n = 0;
     private function updateGrabsPosition(except:Array<Int> = null){
         var _r = getRotationRad();
-         
+        var pvt:Point = getPivot();
         setRotationRad(0);
         setGrabsPositionWhenRI0();
         setRotationRad(_r);
+    
         var distances:Array<Float> = [];
-        var pvt:Point = getPivot();
+        
         for (index => grab in grabs) {
             if(index != 4){
                 var a = grab.x - pvt.x;
@@ -95,10 +97,10 @@ class UITransform extends Transformation{
         for (i => dis in distances) {
             if(i != 4){
                 var grab = grabs[i];
-                var r:Float = Math.atan2(grab.x - pvt.x,grab.y - pvt.y) + Math.PI / 2;
-
-                grab.x = pvt.x + Math.cos(_r) * dis;
-                grab.y = pvt.y + Math.sin(_r) * dis;
+                var r:Float = Math.atan2(grab.y - pvt.y,grab.x - pvt.x);
+                r+=_r;
+                grab.x = pvt.x + Math.cos(r) * dis;
+                grab.y = pvt.y + Math.sin(r) * dis;
                 grab.rotation = _r * 180 / Math.PI;
             }
             
@@ -198,7 +200,7 @@ class UITransform extends Transformation{
         }
     }
     private function grabHandler(e:MouseEvent) {
-        setRotationRad(getRotationRad()+ (1 / 180 * Math.PI));
+       
     }
     public static function make(object:DisplayObject):UITransform{
         var uit:UITransform = new UITransform(new openfl.geom.Matrix(1,0,0,1,object.x,object.y));

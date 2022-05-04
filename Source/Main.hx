@@ -16,6 +16,7 @@ class Main extends Sprite
 		stage.frameRate = 60;
 		stage.color = 0x888888;
         createSprites();
+		
 	}
 
 	private function createSprites() {
@@ -26,7 +27,7 @@ class Main extends Sprite
 			sprite.x = 300;
 			sprite.y = 300;
 			addChild(sprite);
-			UITransform.make(sprite).setRotationRad(10);
+			var t:UITransform = UITransform.make(sprite);
 
 		}
 	}

@@ -1,7 +1,6 @@
 package;
 import openfl.display.Sprite;
 import openfl.Lib;
-import haxe.display.Position;
 import openfl.geom.Rectangle;
 import openfl.events.MouseEvent;
 import openfl.geom.Matrix;
@@ -18,9 +17,18 @@ class UITransform extends Transformation{
     private static var grabsCreated:Bool;
     private static var grabs:Array<GrabPoint>;
     private var pivotOffset:Point = new Point();
-    public function new(matrix:Matrix=null,width:Float=0,height:Float=0,?pivot:Point=null) {
-        super(matrix,width,height,pivot);
-    }
+    public static var aligns:Array<Point> = [
+        //[x,x,x]
+        //[x,o,x]
+        //[x,x,x]
+		new Point(-1,-1),new Point(0,-1),new Point(1,-1),
+		new Point(-1,0),new Point(0,0),new Point(1,0),
+		new Point(-1,1),new Point(0,1),new Point(1,1)
+	];
+
+    // public function new(matrix:Matrix=null,width:Float=0,height:Float=0,?pivot:Point=null) {
+    //     super(matrix,width,height,pivot);
+    // }
     
     public override function bind(target:DisplayObject) {
         super.bind(target);
@@ -33,7 +41,7 @@ class UITransform extends Transformation{
             target.addEventListener(Event.ADDED_TO_STAGE,ATSHandler);
         }
         this.addEventListener(Transformation.TRANSFORM, _onTransform);
-        
+
         target.addEventListener(MouseEvent.MOUSE_DOWN,targetMouseDownHandler);
 
         updateGrabsPosition();
@@ -59,7 +67,7 @@ class UITransform extends Transformation{
 
     private function targetStageHandler(e:MouseEvent) {
         var tar:DisplayObject = e.currentTarget;
-        _parent = tar.parent;
+        
         if(e.type == MouseEvent.MOUSE_UP){
             tar.stage.removeEventListener(MouseEvent.MOUSE_MOVE,targetStageHandler);
             tar.stage.removeEventListener(MouseEvent.MOUSE_UP,targetStageHandler);
@@ -74,7 +82,7 @@ class UITransform extends Transformation{
         }
     }
     var n = 0;
-    private function updateGrabsPosition(except:Array<Int> = null){
+    private function updateGrabsPosition(except:Array<Int> = null,updatePivot:Bool = true){
         var _r = getRotationRad();
         var pvt:Point = getPivot();
         setRotationRad(0);
@@ -95,17 +103,20 @@ class UITransform extends Transformation{
         }
         
         for (i => dis in distances) {
+            var _180_DIV_PI:Float = 180 / Math.PI;
             if(i != 4){
                 var grab = grabs[i];
                 var r:Float = Math.atan2(grab.y - pvt.y,grab.x - pvt.x);
                 r+=_r;
                 grab.x = pvt.x + Math.cos(r) * dis;
                 grab.y = pvt.y + Math.sin(r) * dis;
-                grab.rotation = _r * 180 / Math.PI;
+                grab.rotation = _r * _180_DIV_PI;
             }
             
         }
-        this.setPivot(new Point(_target.parent.mouseX - pivotOffset.x,_target.parent.mouseY - pivotOffset.y));
+        if(updatePivot){
+             this.setPivot(new Point(_target.parent.mouseX - pivotOffset.x,_target.parent.mouseY - pivotOffset.y));
+        }
 
     }
 
@@ -125,14 +136,7 @@ class UITransform extends Transformation{
 
     }
  
-    private var aligns:Array<Point> = [
-        //[x,x,x]
-        //[x,o,x]
-        //[x,x,x]
-		new Point(-1,-1),new Point(0,-1),new Point(1,-1),
-		new Point(-1,0),new Point(0,0),new Point(1,0),
-		new Point(-1,1),new Point(0,1),new Point(1,1)
-	];
+   
 
     public override function setPivot(point:Point) {
         super.setPivot(point);
@@ -150,6 +154,7 @@ class UITransform extends Transformation{
         
     }
     private function ATSHandler(e:Event) {
+        _parent = cast(e.currentTarget,DisplayObject).parent;
         addGrabsToParent(cast(e.currentTarget,DisplayObject).parent);
     }
 
@@ -170,8 +175,11 @@ class UITransform extends Transformation{
             var fillColor:Int = i == 4 ? 0xffffff : 0x000000;
             var lineColor:Int = i == 4 ? 0x000000 : 0xffffff;
             var grab:GrabPoint = new GrabPoint(type,new Point(12,12),fillColor,lineColor,1);
+            grab.id = i;
+            grab.addRotatePoint();
             grabs.push(grab);
             grab.addEventListener(MouseEvent.MOUSE_DOWN,grabHandler);
+             
         }
         grabsCreated = true;
 
@@ -199,15 +207,51 @@ class UITransform extends Transformation{
             Lib.current.stage.removeEventListener(MouseEvent.MOUSE_UP,stageMouseHandlerForGrab4);
         }
     }
+    var start_r_point:Point;
+    var start_r:Float;
+    var _pvt_for_rotate_temp:Point;
+    var _old_r_for_rotate_temp:Float;
     private function grabHandler(e:MouseEvent) {
-       
+       if(e.target is RotatePoint){
+            
+            _old_r_for_rotate_temp = getRotationRad();
+            var __pivot:Point = getPivot();
+            _pvt_for_rotate_temp = __pivot;
+            trace(_parent);
+            start_r_point = new Point(_parent.mouseX,_parent.mouseY);
+            start_r = Math.atan2(start_r_point.y - __pivot.y,start_r_point.x - __pivot.x);
+            Lib.current.stage.removeEventListener(MouseEvent.MOUSE_MOVE,stageMouseMoveHandlerForGrabs);
+            Lib.current.stage.addEventListener(MouseEvent.MOUSE_MOVE,stageMouseMoveHandlerForGrabs);
+            Lib.current.stage.removeEventListener(MouseEvent.MOUSE_UP,stageMouseMoveHandlerForGrabs);
+            Lib.current.stage.addEventListener(MouseEvent.MOUSE_UP,stageMouseMoveHandlerForGrabs);
+            
+       }
+       else{
+
+       }
+    }
+
+    private function stageMouseMoveHandlerForGrabs(e:MouseEvent){
+        if(e.type == MouseEvent.MOUSE_MOVE){
+        
+            var current_r_point = new Point(_parent.mouseX,_parent.mouseY);
+            var current_r:Float = Math.atan2(current_r_point.y - _pvt_for_rotate_temp.y,current_r_point.x - _pvt_for_rotate_temp.x);
+            var rotated_r = current_r - start_r;
+            trace(_old_r_for_rotate_temp + rotated_r);
+            setRotationRad(_old_r_for_rotate_temp + rotated_r);
+            updateGrabsPosition(null,false);
+
+        }else if(e.type == MouseEvent.MOUSE_UP){
+            Lib.current.stage.removeEventListener(MouseEvent.MOUSE_MOVE,stageMouseMoveHandlerForGrabs);
+            Lib.current.stage.removeEventListener(MouseEvent.MOUSE_UP,stageMouseMoveHandlerForGrabs);
+        }
+        
     }
     public static function make(object:DisplayObject):UITransform{
         var uit:UITransform = new UITransform(new openfl.geom.Matrix(1,0,0,1,object.x,object.y));
 		uit.bind(object);
         var b:Rectangle = object.getBounds(object.parent);
         uit.setPivot(new Point(b.x + b.width / 2,b.y+b.height / 2));
-        uit.setRotation(45);
         return uit;
     }
 
@@ -238,7 +282,7 @@ class GrabPoint extends Sprite{
 	}
 
     public  function addRotatePoint() {
-        var rp:RotatePoint = new RotatePoint(0xff0000,20);
+        var rp:RotatePoint = new RotatePoint(0x000000,20);
         if(id == 0){
             rp.x = -_extents.x - rp.size / 2;
             rp.y = -_extents.y - rp.size / 2;
@@ -268,10 +312,10 @@ class GrabPoint extends Sprite{
 
 class RotatePoint extends Sprite{
     public var size:Float;
-    public function new(fillColor:Int,size:Float,_alpha = 0.5) {
+    public function new(fillColor:Int,size:Float) {
         super();
         this.size = size;
-        graphics.beginFill(fillColor,_alpha);
+        graphics.beginFill(fillColor);
         graphics.drawCircle(0,0,size);
         graphics.endFill();
     }

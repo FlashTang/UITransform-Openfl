@@ -1,7 +1,6 @@
 package;
 
 import openfl.utils.Object;
-import openfl.display.Shape;
 import openfl.display.Sprite;
 import openfl.Lib;
 import openfl.geom.Rectangle;
@@ -21,6 +20,14 @@ enum GrabType {
 	Rect;
 }
 
+enum IntersectAlign {
+    //假设 p1在p2左边，并且，p1在p2的下方
+    TOP_LEFT;
+    BOTTOM_RIGHT;
+    TOP_LEFT_AND_BOTTOM_RIGHT;
+    UNDEFINED;
+}
+
 class UITransform extends Transformation{
 
     
@@ -37,11 +44,13 @@ class UITransform extends Transformation{
     private var md_moment_rad:Float;
     private var md_moment_pvt:Point;
     private var md_moment_scale:Point;
-    private var md_moment_2segs_intersectant:Bool;
+    private var md_moment_2segs_intersectants:Array<Bool>;
     private var task:GrabTask;
     private var current_grab:GrabPoint;
-    private var scale_base_point:Point;
+    private var scale_base_points:Array<Point>;
     private var old_scale_dis_yz:Float;
+    private var old_scale_dis_yz_x:Float;
+    private var old_scale_dis_yz_y:Float;
     private var old_size_before_scale:Point;
     public static var aligns:Array<Point> = [
         //[x,x,x]
@@ -60,7 +69,7 @@ class UITransform extends Transformation{
         
         target.addEventListener(MouseEvent.MOUSE_DOWN,targetMouseDownHandler);
 
-        base = new GrabPoint(GrabType.Circle,new Point(14,14),0xff0000,0x000000,1);
+        base = new GrabPoint(GrabType.Circle,new Point(12,12),0x0000ff,0x000000,1);
         line = new Sprite();
         _parent.addChild(base);
         _parent.addChild(line);
@@ -246,12 +255,28 @@ class UITransform extends Transformation{
             var grab:GrabPoint = e.currentTarget;
             md_moment_rad = getRotationRad();
             md_moment_pvt = getPivot();
-            md_moment_2segs_intersectant = segs_intersectant(new Point(_parent.mouseX,_parent.mouseY),grab);
+           
+            var is____2d = grab.id == 0 || grab.id == 2 || grab.id == 6 || grab.id == 8 ;
+            md_moment_2segs_intersectants = segs_intersectant(new Point(_parent.mouseX,_parent.mouseY),grab,is____2d);
+       
+            scale_base_points = getScaleBasdPoint(new Point(_parent.mouseX,_parent.mouseY),grab,is____2d);
+            var a:Float = Math.NaN;
+            var b:Float = Math.NaN;
             
-            scale_base_point = getScaleBasdPoint(new Point(_parent.mouseX,_parent.mouseY),grab);
-            var a = scale_base_point.x - _parent.mouseX;
-            var b = scale_base_point.y - _parent.mouseY;
+            if(is____2d){
+                a = scale_base_points[1].x - _parent.mouseX;
+                b = scale_base_points[1].y - _parent.mouseY;
+                var a2 = scale_base_points[0].x - _parent.mouseX;
+                var b2 = scale_base_points[0].y - _parent.mouseY;
+                old_scale_dis_yz_y = Math.sqrt(a * a + b * b); 
+                old_scale_dis_yz_x = Math.sqrt(a2 * a2 + b2 * b2); 
+            }
+            else{
+                a = scale_base_points[0].x - _parent.mouseX;
+                b = scale_base_points[0].y - _parent.mouseY;
+            }
             old_scale_dis_yz = Math.sqrt(a * a + b * b); 
+
             current_grab = grab;
             task = GrabTask.ZOOM;
             md_moment_scale = new Point(getScaleX(),getScaleY());
@@ -283,40 +308,62 @@ class UITransform extends Transformation{
             }
             else if(task == GrabTask.ZOOM){
                 var grab:GrabPoint = current_grab;
-                
-                for (id in [1,3,5,7,  0,2,8,6]) {
-                    if(id == grab.id) {
-                        scale_base_point = getScaleBasdPoint(new Point(_parent.mouseX,_parent.mouseY),grab);
-                        
-                        var a = scale_base_point.x - _parent.mouseX;
-                        var b = scale_base_point.y - _parent.mouseY;
+                var is_2d = grab.id == 0 || grab.id == 2 || grab.id == 6 || grab.id == 8 ;
+
+                scale_base_points = getScaleBasdPoint(new Point(_parent.mouseX,_parent.mouseY),grab,is_2d);
+               
+                if(!is_2d){
+                    if(grab.id != 4) {
+                        var a = scale_base_points[0].x - _parent.mouseX;
+                        var b = scale_base_points[0].y - _parent.mouseY;
                         var now_scale_dis_yz = Math.sqrt(a * a + b * b); 
-                        
+        
                         var now_height = now_scale_dis_yz * (old_size_before_scale.y/old_scale_dis_yz);
                         var now_scale_y = now_height / old_size_before_scale.y;
 
                         var now_width = now_scale_dis_yz * (old_size_before_scale.x/old_scale_dis_yz);
                         var now_scale_x = now_width / old_size_before_scale.x;
 
-                        base.x = scale_base_point.x;
-                        base.y = scale_base_point.y;
+                        base.x = scale_base_points[0].x;
+                        base.y = scale_base_points[0].y;
 
-                        var now_intersectant = segs_intersectant(new Point(_parent.mouseX,_parent.mouseY),grab);
-                        var flip_yz = md_moment_2segs_intersectant != now_intersectant ? -1 : 1;
-                        if(id == 3 || id == 5){
+                        var now_intersectants:Array<Bool> = segs_intersectant(new Point(_parent.mouseX,_parent.mouseY),grab);
+                        var flip_yz = md_moment_2segs_intersectants[0] != now_intersectants[0] ? -1 : 1;
+                        if(grab.id == 3 || grab.id == 5){
                             setScaleX(now_scale_x * md_moment_scale.x * flip_yz);
                         }
-                        else if(id == 1 || id == 7){
+                        else if(grab.id == 1 || grab.id == 7){
                             setScaleY(now_scale_y * md_moment_scale.y * flip_yz);
                         }
-                        else {
-                            //setScaleX(now_scale_x * md_moment_scale.x * flip_yz);
-                            //setScaleY(now_scale_y * md_moment_scale.y * flip_yz);
-                        }
-                        
                         updateGrabsPosition(null,false);
+                      
+                    }
+                
+                }
+                else { //那就是 0,2,6,8
+                    if(grab.id != 4) {
+                        var a1 = scale_base_points[0].x - _parent.mouseX;
+                        var b1 = scale_base_points[0].y - _parent.mouseY;
+                        var a2 = scale_base_points[1].x - _parent.mouseX;
+                        var b2 = scale_base_points[1].y - _parent.mouseY;
 
-                        break;
+                        var now_scale_dis_yz_x = Math.sqrt(a1 * a1 + b1 * b1);
+                        var now_scale_dis_yz_y = Math.sqrt(a2 * a2 + b2 * b2);
+
+
+                        var now_height = now_scale_dis_yz_y * (old_size_before_scale.y/old_scale_dis_yz_y);
+                        var now_scale_y = now_height / old_size_before_scale.y;
+
+                        var now_width = now_scale_dis_yz_x * (old_size_before_scale.x/old_scale_dis_yz_x);
+                        var now_scale_x = now_width / old_size_before_scale.x;
+                        var now_intersectants:Array<Bool> = segs_intersectant(new Point(_parent.mouseX,_parent.mouseY),grab,true);
+                        var flip_yz_x = md_moment_2segs_intersectants[0] != now_intersectants[0] ? -1 : 1;
+                        var flip_yz_y = md_moment_2segs_intersectants[1] != now_intersectants[1] ? -1 : 1;
+
+                        setScaleX(now_scale_x * md_moment_scale.x * flip_yz_x);
+                        setScaleY(now_scale_y * md_moment_scale.y * flip_yz_y);
+
+                        updateGrabsPosition(null,false);
                     }
                 }
 
@@ -354,48 +401,97 @@ class UITransform extends Transformation{
         }
     };
 
-    function getScaleBasdPoint(mousePoint:Point,grab:GrabPoint):Point {
-        var xyObj:Object = getSegments(mousePoint,grab);
-        return line_intersect(xyObj.x1, xyObj.y1, xyObj.x2, xyObj.y2, xyObj.x3, xyObj.y3, xyObj.x4, xyObj.y4);
-    }
-
-    function getSegments(mousePoint:Point,grab:GrabPoint):Object {
-        var x1:Float, y1:Float, x2:Float, y2:Float, x3:Float, y3:Float, x4:Float, y4:Float;
-        x1 = y1 = x2 = y2 = x3 = y3 = x4 = y4 = 0;
-        var bigNum:Float = 9999999999;
-        var rad:Float = md_moment_rad;
-        x1 = mousePoint.x; y1 = mousePoint.y;
-       
-        var pvt_p2_x:Float = 0,pvt_p2_y:Float = 0;
-        if(grab.id == 1 || grab.id == 7){
-
-            x2 = Math.cos(rad + Math.PI / 2) * bigNum + x1;
-            y2 = Math.sin(rad + Math.PI / 2) * bigNum + y1;
-
-            x3 = Math.cos(rad - Math.PI) * bigNum + md_moment_pvt.x;  
-            y3 = Math.sin(rad - Math.PI) * bigNum + md_moment_pvt.y;
-
-            pvt_p2_x = Math.cos(rad) * bigNum + md_moment_pvt.x;
-            pvt_p2_y = Math.sin(rad) * bigNum + md_moment_pvt.y;
-        }
-        else if(grab.id == 3 || grab.id == 5){
-            x2 = Math.cos(rad) * bigNum + x1;
-            y2 = Math.sin(rad) * bigNum + y1;
-
-            x3 = Math.cos(rad - Math.PI / 2) * bigNum + md_moment_pvt.x;  
-            y3 = Math.sin(rad - Math.PI / 2) * bigNum + md_moment_pvt.y;
-
-            pvt_p2_x = Math.cos(rad + Math.PI / 2) * bigNum + md_moment_pvt.x;
-            pvt_p2_y = Math.sin(rad + Math.PI /2) * bigNum + md_moment_pvt.y;
-        }
-        x4 = pvt_p2_x;
-        y4 = pvt_p2_y;
-        return {x1:x1,y1:y1,x2:x2,y2:y2,x3:x3,y3:y3,x4:x4,y4:y4};
-    }
     
-    function segs_intersectant(mousePoint:Point,grab:GrabPoint):Bool {
-        var xyObj:Object = getSegments(mousePoint,grab);
-        return intersects(xyObj.x1, xyObj.y1, xyObj.x2, xyObj.y2, xyObj.x3, xyObj.y3, xyObj.x4, xyObj.y4);
+ 
+    function getNormalLonglines(p1:Point,p2:Point,align:IntersectAlign):Object {
+        var a_x:Float,a_y:Float,b_x:Float,b_y:Float;
+        var c_x:Float,c_y:Float,d_x:Float,d_y:Float;
+        var rad = md_moment_rad;
+        if(align == IntersectAlign.TOP_LEFT){
+            a_x = Math.cos(rad - Math.PI / 2) * 999999999 + p1.x;
+            a_y = Math.sin(rad - Math.PI / 2) * 999999999 + p1.y;
+            b_x = Math.cos(rad + Math.PI / 2) * 999999999 + p1.x;
+            b_y = Math.sin(rad + Math.PI / 2) * 999999999 + p1.y;
+    
+            
+            c_x = p2.x;
+            c_y = p2.y;
+            d_x = Math.cos(rad) * 999999999 + p2.x;
+            d_y = Math.sin(rad) * 999999999 + p2.y;
+        }
+        else{
+            a_x = Math.cos(rad) * 999999999 + p1.x;
+            a_y = Math.sin(rad) * 999999999 + p1.y;
+            b_x = Math.cos(rad - Math.PI) * 999999999 + p1.x;
+            b_y = Math.sin(rad - Math.PI) * 999999999 + p1.y;
+    
+            c_x = p2.x;
+            c_y = p2.y;
+            d_x = Math.cos(rad + Math.PI/2) * 999999999 + p2.x;
+            d_y = Math.sin(rad + Math.PI/2) * 999999999 + p2.y;
+        }
+        
+        return {x1:a_x,y1:a_y,x2:b_x,y2:b_y,x3:c_x,y3:c_y,x4:d_x,y4:d_y};
+    }
+    function getAlign(grab:GrabPoint) :IntersectAlign{
+        var align:IntersectAlign = IntersectAlign.UNDEFINED;
+        for (i in [1,7]) {
+            if(grab.id == i){
+                align = IntersectAlign.BOTTOM_RIGHT;
+                break;
+            }
+        }
+        if(align == IntersectAlign.UNDEFINED){
+            for (i in [3,5]) {
+                if(grab.id == i){
+                    align = IntersectAlign.TOP_LEFT;
+                    break;
+                }
+            }
+        }
+        else{
+            align = IntersectAlign.TOP_LEFT_AND_BOTTOM_RIGHT;
+        }
+        return align;
+    }
+    function getScaleBasdPoint(mousePoint:Point,grab:GrabPoint,is2D:Bool = false):Array<Point> {
+        if(!is2D){
+            var align = getAlign(grab);
+            var obj:Object = getNormalLonglines(md_moment_pvt,mousePoint,align);
+            return [line_intersect(obj.x1, obj.y1, obj.x2, obj.y2, obj.x3, obj.y3, obj.x4, obj.y4)];
+        }
+        else{
+            var obj1:Object = getNormalLonglines(md_moment_pvt,mousePoint,IntersectAlign.TOP_LEFT);
+            var obj2:Object = getNormalLonglines(md_moment_pvt,mousePoint,IntersectAlign.BOTTOM_RIGHT);
+            return [
+                line_intersect(obj1.x1, obj1.y1, obj1.x2, obj1.y2, obj1.x3, obj1.y3, obj1.x4, obj1.y4),
+                line_intersect(obj2.x1, obj2.y1, obj2.x2, obj2.y2, obj2.x3, obj2.y3, obj2.x4, obj2.y4)
+            ];
+        }
+    }
+    function segs_intersectant(mousePoint:Point,grab:GrabPoint,two_dimension:Bool = false):Array<Bool> {
+        var align = null;
+        var auto:Object = null;
+        var tl:Object = null,br:Object = null;
+        if(!two_dimension){
+            align = getAlign(grab);
+            auto= getNormalLonglines(md_moment_pvt,mousePoint,align);
+        }
+        else{
+            tl = getNormalLonglines(md_moment_pvt,mousePoint,IntersectAlign.TOP_LEFT);
+            br = getNormalLonglines(md_moment_pvt,mousePoint,IntersectAlign.BOTTOM_RIGHT);
+        }
+        
+        if(!two_dimension){
+            return [intersects(auto.x1, auto.y1, auto.x2, auto.y2, auto.x3, auto.y3, auto.x4, auto.y4)];
+        }
+        else{
+            return [intersects(tl.x1, tl.y1, tl.x2, tl.y2, tl.x3, tl.y3, tl.x4, tl.y4),
+                intersects(br.x1, br.y1, br.x2, br.y2, br.x3, br.y3, br.x4, br.y4)];
+        }
+        
+                
+          
     }
     
     public static function make(object:DisplayObject):UITransform{

@@ -310,8 +310,8 @@ class UITransform extends Transformation{
                             setScaleY(now_scale_y * md_moment_scale.y * flip_yz);
                         }
                         else {
-                            setScaleX(now_scale_x * md_moment_scale.x * flip_yz);
-                            setScaleY(now_scale_y * md_moment_scale.y * flip_yz);
+                            //setScaleX(now_scale_x * md_moment_scale.x * flip_yz);
+                            //setScaleY(now_scale_y * md_moment_scale.y * flip_yz);
                         }
                         
                         updateGrabsPosition(null,false);

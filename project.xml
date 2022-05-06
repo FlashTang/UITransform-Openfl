@@ -11,4 +11,5 @@
 	<assets path="Assets" rename="assets" />
 	
 	<haxelib name="akifox-transform" />
+	 
 </project>

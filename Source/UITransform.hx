@@ -1,5 +1,6 @@
 package;
 
+import openfl.utils.Object;
 import openfl.display.Shape;
 import openfl.display.Sprite;
 import openfl.Lib;
@@ -36,6 +37,7 @@ class UITransform extends Transformation{
     private var md_moment_rad:Float;
     private var md_moment_pvt:Point;
     private var md_moment_scale:Point;
+    private var md_moment_2segs_intersectant:Bool;
     private var task:GrabTask;
     private var current_grab:GrabPoint;
     private var scale_base_point:Point;
@@ -241,9 +243,11 @@ class UITransform extends Transformation{
             start_r = Math.atan2(_parent.mouseY - md_moment_pvt.y,_parent.mouseX - md_moment_pvt.x);
        }
        else{
+            var grab:GrabPoint = e.currentTarget;
             md_moment_rad = getRotationRad();
             md_moment_pvt = getPivot();
-            var grab:GrabPoint = e.currentTarget;
+            md_moment_2segs_intersectant = segs_intersectant(new Point(_parent.mouseX,_parent.mouseY),grab);
+            
             scale_base_point = getScaleBasdPoint(new Point(_parent.mouseX,_parent.mouseY),grab);
             var a = scale_base_point.x - _parent.mouseX;
             var b = scale_base_point.y - _parent.mouseY;
@@ -297,16 +301,17 @@ class UITransform extends Transformation{
                         base.x = scale_base_point.x;
                         base.y = scale_base_point.y;
 
-
+                        var now_intersectant = segs_intersectant(new Point(_parent.mouseX,_parent.mouseY),grab);
+                        var flip_yz = md_moment_2segs_intersectant != now_intersectant ? -1 : 1;
                         if(id == 3 || id == 5){
-                            setScaleX(now_scale_x * md_moment_scale.x);
+                            setScaleX(now_scale_x * md_moment_scale.x * flip_yz);
                         }
                         else if(id == 1 || id == 7){
-                            setScaleY(now_scale_y * md_moment_scale.y);
+                            setScaleY(now_scale_y * md_moment_scale.y * flip_yz);
                         }
                         else {
-                            setScaleX(now_scale_x * md_moment_scale.x);
-                            setScaleY(now_scale_y * md_moment_scale.y);
+                            setScaleX(now_scale_x * md_moment_scale.x * flip_yz);
+                            setScaleY(now_scale_y * md_moment_scale.y * flip_yz);
                         }
                         
                         updateGrabsPosition(null,false);
@@ -335,7 +340,26 @@ class UITransform extends Transformation{
         return new Point(x1 + ua * (x2 - x1),y1 + ua * (y2 - y1));
     }
 
+    //判断两条线段是否相交
+    //https://stackoverflow.com/questions/9043805/test-if-two-lines-intersect-javascript-function
+    function intersects(a,b,c,d,p,q,r,s):Bool {
+        var det, gamma, lambda;
+        det = (c - a) * (s - q) - (r - p) * (d - b);
+        if (det == 0) {
+            return false;
+        } else {
+        lambda = ((s - q) * (r - a) + (p - r) * (s - b)) / det;
+        gamma = ((b - d) * (r - a) + (c - a) * (s - b)) / det;
+            return (0 < lambda && lambda < 1) && (0 < gamma && gamma < 1);
+        }
+    };
+
     function getScaleBasdPoint(mousePoint:Point,grab:GrabPoint):Point {
+        var xyObj:Object = getSegments(mousePoint,grab);
+        return line_intersect(xyObj.x1, xyObj.y1, xyObj.x2, xyObj.y2, xyObj.x3, xyObj.y3, xyObj.x4, xyObj.y4);
+    }
+
+    function getSegments(mousePoint:Point,grab:GrabPoint):Object {
         var x1:Float, y1:Float, x2:Float, y2:Float, x3:Float, y3:Float, x4:Float, y4:Float;
         x1 = y1 = x2 = y2 = x3 = y3 = x4 = y4 = 0;
         var bigNum:Float = 9999999999;
@@ -366,9 +390,12 @@ class UITransform extends Transformation{
         }
         x4 = pvt_p2_x;
         y4 = pvt_p2_y;
-
-        //trace(x1 ,y1 , x2 , y2 , x3 , y3 , x4 , y4 );
-        return line_intersect(x1, y1, x2, y2, x3, y3, x4, y4);
+        return {x1:x1,y1:y1,x2:x2,y2:y2,x3:x3,y3:y3,x4:x4,y4:y4};
+    }
+    
+    function segs_intersectant(mousePoint:Point,grab:GrabPoint):Bool {
+        var xyObj:Object = getSegments(mousePoint,grab);
+        return intersects(xyObj.x1, xyObj.y1, xyObj.x2, xyObj.y2, xyObj.x3, xyObj.y3, xyObj.x4, xyObj.y4);
     }
     
     public static function make(object:DisplayObject):UITransform{

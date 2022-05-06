@@ -344,7 +344,7 @@ class UITransform extends Transformation{
        
         var pvt_p2_x:Float = 0,pvt_p2_y:Float = 0;
         if(grab.id == 1 || grab.id == 7){
-            
+
             x2 = Math.cos(rad + Math.PI / 2) * bigNum + x1;
             y2 = Math.sin(rad + Math.PI / 2) * bigNum + y1;
 
@@ -364,7 +364,6 @@ class UITransform extends Transformation{
             pvt_p2_x = Math.cos(rad + Math.PI / 2) * bigNum + md_moment_pvt.x;
             pvt_p2_y = Math.sin(rad + Math.PI /2) * bigNum + md_moment_pvt.y;
         }
-
         x4 = pvt_p2_x;
         y4 = pvt_p2_y;
 

@@ -1,3 +1,8 @@
+# 此库已弃用，有兴趣可查看这个版本 <br>
+https://github.com/FlashTang/TransformTool-Openfl <br>
+# This project was deprecated, for better one check this link： <br>
+https://github.com/FlashTang/TransformTool-Openfl <br>
+
 ## UITransform-Openfl
 # 在akifox-transform的基础上集成了UI
 依赖：[akifox-transform](https://github.com/yupswing/akifox-transform)
